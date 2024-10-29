@@ -43,7 +43,6 @@ class Quantity(BaseModel):
         raise TypeError(f"Unsupported type {type(v).__name__}; expected 'str' or 'float'.")
 
 
-
 class Range(DataType):
     low: Optional[Quantity] = None
     high: Optional[Quantity] = None

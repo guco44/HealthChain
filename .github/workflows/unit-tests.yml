@@ -37,4 +37,4 @@ jobs:
           ls -R  # Recursively list all files and directories to locate the test file
 
       - name: Run unit tests
-        run: poetry run pytest healthchain/tests/test_concept.py
+        run: poetry run pytest tests/test_concept.py

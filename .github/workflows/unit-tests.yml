@@ -32,5 +32,9 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
+      - name: List directory contents
+        run: |
+          ls -R  # Recursively list all files and directories to locate the test file
+
       - name: Run unit tests
-        run: poetry run pytest test_concept.py
+        run: poetry run pytest healthchain/tests/test_concept.py

@@ -33,4 +33,4 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Run unit tests
-        run: poetry run pytest healthchain/tests/test_concept.py
+        run: poetry run pytest test_concept.py

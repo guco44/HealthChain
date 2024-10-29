@@ -1,7 +1,8 @@
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 from typing import Optional, Dict, Union
-
+import logging
+import math
 
 class Standard(Enum):
     cda = "cda"
@@ -16,32 +17,32 @@ class DataType(BaseModel):
     _source: Optional[Dict] = None
 
 
-class Quantity(DataType):
-    # TODO: validate conversions str <-> float
-    value: Optional[Union[str, float]] = None
-    unit: Optional[str] = None
+class Quantity(BaseModel):
+    content: Optional[Union[str, float]] = None
+    scale: Optional[str] = None
 
-    @field_validator("value")
-    @classmethod
-    def validate_value(cls, value: Union[str, float]):
-        if value is None:
-            return None
+    @validator('content', pre=True, always=True)
+    def ensure_float_conversion(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, float):
+            if math.isinf(v):
+                logging.error(f"OverflowError: The value '{v}' is too large.")
+                raise OverflowError(f"The value '{v}' is too large.")
+            return v
+        if isinstance(v, str):
+            try:
+                value = float(v)
+                if math.isinf(value):
+                    logging.error(f"OverflowError: The value '{v}' is too large.")
+                    raise OverflowError(f"The value '{v}' is too large.")
+                return value
+            except ValueError:
+                logging.error(f"ValueError: Unable to convert '{v}' to float.")
+                raise ValueError(f"Unable to convert '{v}' to float.")
+        raise TypeError(f"Unsupported type {type(v).__name__}; expected 'str' or 'float'.")
 
-        if not isinstance(value, (str, float)):
-            raise TypeError(
-                f"Value CANNOT be a {type(value)} object. Must be float or string in float format."
-            )
 
-        try:
-            return float(value)
-
-        except ValueError:
-            raise ValueError(f"Invalid value '{value}' . Must be a float Number.")
-
-        except OverflowError:
-            raise OverflowError(
-                "Invalid value . Value is too large resulting in overflow."
-            )
 
 
 class Range(DataType):

@@ -44,7 +44,6 @@ class Quantity(BaseModel):
 
 
 
-
 class Range(DataType):
     low: Optional[Quantity] = None
     high: Optional[Quantity] = None

@@ -1,0 +1,57 @@
+name: Sync with Upstream and Run Tests
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight UTC; adjust if needed
+  workflow_dispatch: # Allows manual triggering of this workflow
+
+jobs:
+  sync-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Git for authentication
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Check out the forked repository
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false # Disable default token to use manually set token below
+          fetch-depth: 0 # Fetch all history for accurate merging
+
+      - name: Add upstream repository
+        run: git remote add upstream https://github.com/dotimplement/HealthChain.git
+
+      - name: Fetch and merge upstream changes
+        run: |
+          git fetch upstream
+          git checkout main
+          git merge upstream/main
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry self update ${{ matrix.poetry-version }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run unit tests
+        run: poetry run pytest tests/test_concept.py
+
+      - name: Push changes to forked repository
+        if: success() # Only push if all previous steps were successful
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin main

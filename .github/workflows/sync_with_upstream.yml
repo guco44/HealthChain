@@ -2,8 +2,8 @@ name: Sync with Upstream and Run Tests
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight UTC; adjust if needed
-  workflow_dispatch: # Allows manual triggering of this workflow
+    - cron: '0 0 * * *' # Runs daily at midnight UTC
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   sync-and-test:
@@ -11,17 +11,15 @@ jobs:
 
     steps:
       - name: Set up Git for authentication
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
       - name: Check out the forked repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
-          persist-credentials: false # Disable default token to use manually set token below
-          fetch-depth: 0 # Fetch all history for accurate merging
+          persist-credentials: false
+          fetch-depth: 0
 
       - name: Add upstream repository
         run: git remote add upstream https://github.com/dotimplement/HealthChain.git
@@ -32,26 +30,38 @@ jobs:
           git checkout main
           git merge upstream/main
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      # Trigger ci.yml
+      - name: Trigger CI Workflow
+        uses: benc-uk/workflow-dispatch@v1
         with:
-          python-version: ${{ matrix.python-version }}
+          workflow: 'ci.yml'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry self update ${{ matrix.poetry-version }}
+      # Trigger unit-tests.yml
+      - name: Trigger Unit Tests Workflow
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'unit-tests.yml'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        run: poetry install --no-interaction
+      # Wait for ci.yml to complete
+      - name: Wait for CI Workflow to Complete
+        uses: shaunversion/wait-on-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref }}
+          check-name: 'ci_job'
 
-      - name: Run unit tests
-        run: poetry run pytest tests/test_concept.py
+      # Wait for unit-tests.yml to complete
+      - name: Wait for Unit Tests Workflow to Complete
+        uses: shaunversion/wait-on-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref }}
+          check-name: 'unit_tests_job'
 
+      # Push changes to forked repository
       - name: Push changes to forked repository
-        if: success() # Only push if all previous steps were successful
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: success()
         run: |
           git push origin main
